@@ -99,3 +99,9 @@ ENV/
 
 # mypy
 .mypy_cache/
+
+# Mac
+ckpt/
+.idea/
+.DS_Store
+*.DS_Store
