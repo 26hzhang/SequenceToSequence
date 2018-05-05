@@ -102,6 +102,7 @@ ENV/
 
 # Mac
 ckpt/
+summary/
 .idea/
 .DS_Store
 *.DS_Store

@@ -14,9 +14,12 @@ connect_punct = re.compile(r"-+|_+", re.IGNORECASE)
 
 MAX_SENT_LENGTH = 40
 MIN_SENT_LENGTH = 2
-MAX_VOCAB_SIZE = 8000
+MAX_VOCAB_SIZE = 10000
 
+PAD = "<PAD>"
 UNK = "<UNK>"
+GO = "<GO>"
+EOS = "<EOS>"
 
 
 def cleanup_sentence(sent):
@@ -92,7 +95,7 @@ def build_vocabulary(utterances):
             word_counter[word] += 1
         for word in utterance["ru"]:
             word_counter[word] += 1
-    word_vocab = [word for word, _ in word_counter.most_common(MAX_VOCAB_SIZE)] + [UNK]
+    word_vocab = [PAD, GO, EOS, UNK] + [word for word, _ in word_counter.most_common(MAX_VOCAB_SIZE)]
     word_dict = dict([(word, idx) for idx, word in enumerate(word_vocab)])
     return word_vocab, word_dict
 
@@ -102,8 +105,7 @@ def build_dataset(utterances, word_dict):
     for utter in tqdm(utterances, desc="Build dataset"):
         lu = [word_dict[word] if word in word_dict else word_dict[UNK] for word in utter['lu']]
         ru = [word_dict[word] if word in word_dict else word_dict[UNK] for word in utter['ru']]
-        lu_len, ru_len = len(lu), len(ru)
-        record = {"lu": lu, "lu_len": lu_len, "ru": ru, "ru_len": ru_len}
+        record = {"lu": lu, "ru": ru}
         dataset.append(record)
     return dataset
 
@@ -137,7 +139,7 @@ def main():  # for testing
     utterances = create_utterance_pair(movie_lines, movie_conversations)
     word_vocab, word_dict = build_vocabulary(utterances)
     dataset = build_dataset(utterances, word_dict)
-    metadata = {"vocab": word_vocab, "dict": word_dict}
+    metadata = {"dict": word_dict, "vocab": word_vocab}
     # write to file
     json_dump(dataset, dataset_path)
     json_dump(metadata, meta_path)
