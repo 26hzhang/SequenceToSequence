@@ -26,7 +26,7 @@ def process_batch_data(batch_lu, batch_ru, word_dict):
     max_ru_len = max(batch_ru_len)
     for lu, ru in zip(batch_lu, batch_ru):
         lu = [word_dict[PAD]] * (max_lu_len - len(lu)) + list(reversed(lu))  # reverse and PAD left utterance
-        ru = ru + [PAD] * (max_ru_len - len(ru))
+        ru = ru + [word_dict[PAD]] * (max_ru_len - len(ru))
         b_lu.append(lu)
         b_ru.append(ru)
     return {"enc_input": b_lu, "enc_seq_len": batch_lu_len, "dec_input": b_ru, "dec_seq_len": batch_ru_len}

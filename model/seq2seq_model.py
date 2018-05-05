@@ -9,7 +9,7 @@ from tensorflow.contrib.seq2seq import BahdanauAttention, LuongAttention, Attent
 from tensorflow.contrib.seq2seq import BasicDecoder, dynamic_decode, BeamSearchDecoder, GreedyEmbeddingHelper
 from tensorflow.contrib.seq2seq.python.ops.beam_search_decoder import tile_batch
 from dataset.data_prepro import GO, EOS
-from tqdm import tqdm
+from model.logger import Progbar
 
 
 class Chatbot:
@@ -80,22 +80,29 @@ class Chatbot:
             feed_dict[self.lr] = lr
         return feed_dict
 
+    def _create_rnn_cell(self):
+        cells = []
+        for _ in range(self.cfg.num_layers):
+            cell = LSTMCell(self.cfg.num_units)
+            cell = DropoutWrapper(cell, output_keep_prob=self.keep_prob)
+            cells.append(cell)
+        return MultiRNNCell(cells)
+
     def _build_model(self):
         with tf.variable_scope("embeddings"):
             self.embeddings = tf.get_variable(name='embeddings', shape=[self.cfg.vocab_size, self.cfg.emb_dim],
                                               dtype=tf.float32, trainable=True)
-            self.encoder_emb = tf.nn.embedding_lookup(self.embeddings, self.enc_input)
+            encoder_emb = tf.nn.embedding_lookup(self.embeddings, self.enc_input)
 
         with tf.variable_scope("encoder"):
-            enc_cells = MultiRNNCell([DropoutWrapper(LSTMCell(self.cfg.num_units), output_keep_prob=self.keep_prob)] *
-                                     self.cfg.num_layers)
-            enc_outputs, enc_states = dynamic_rnn(enc_cells, self.encoder_emb, sequence_length=self.enc_seq_len,
+            enc_cells = self._create_rnn_cell()
+            enc_outputs, enc_states = dynamic_rnn(enc_cells, encoder_emb, sequence_length=self.enc_seq_len,
                                                   dtype=tf.float32)
             enc_seq_len = self.enc_seq_len
             if self.cfg.use_beam_search:
                 enc_outputs = tile_batch(enc_outputs, multiplier=self.cfg.beam_size)
                 enc_states = nest.map_structure(lambda s: tile_batch(s, self.cfg.beam_size), enc_states)
-                enc_seq_len = tile_batch(enc_seq_len, multiplier=self.cfg.beam_size)
+                enc_seq_len = tile_batch(self.enc_seq_len, multiplier=self.cfg.beam_size)
 
         with tf.variable_scope("attention"):
             if self.cfg.attention == "Bahdanau":  # Bahdanau attention mechanism
@@ -110,8 +117,7 @@ class Chatbot:
 
         with tf.variable_scope("decoder"):
             self.max_dec_seq_len = tf.reduce_max(self.dec_seq_len, name="max_dec_seq_len")
-            dec_cells = MultiRNNCell([DropoutWrapper(LSTMCell(self.cfg.num_units), output_keep_prob=self.keep_prob)] *
-                                     self.cfg.num_units)
+            dec_cells = self._create_rnn_cell()
             self.dec_cells = AttentionWrapper(cell=dec_cells, attention_mechanism=attention_mechanism,
                                               attention_layer_size=self.cfg.num_units, name='attention_wrapper')
             # re-allocate batch_size if using beam search strategy
@@ -133,7 +139,7 @@ class Chatbot:
                                                    maximum_iterations=self.max_dec_seq_len)
 
     def _build_decode_op(self):
-        start_token = tf.ones(shape=[self.batch_size, 1], dtype=tf.int32) * self.cfg.word_dict[GO]
+        start_token = tf.ones(shape=[self.batch_size, ], dtype=tf.int32) * self.cfg.word_dict[GO]
         end_token = self.cfg.word_dict[EOS]
         if self.cfg.use_beam_search:
             infer_decoder = BeamSearchDecoder(self.dec_cells, self.embeddings, start_tokens=start_token,
@@ -169,17 +175,19 @@ class Chatbot:
     def train(self, dataset, epochs, shuffle=True):
         self.logger.info("Start training...")
         self._add_summary()
+        num_batches = len(dataset)
         cur_step = 0
         for epoch in range(1, epochs + 1):
             if shuffle:
                 random.shuffle(dataset)
-            for batch_data in tqdm(dataset, desc="Epoch {}:".format(epoch)):
+            prog = Progbar(target=num_batches)  # nbatches
+            for i, batch_data in enumerate(dataset):
                 cur_step += 1
-                feed_dict = self._get_feed_dict(batch_data, keep_prob=self.cfg.keep_prob, lr=self.lr)
+                feed_dict = self._get_feed_dict(batch_data, keep_prob=self.cfg.keep_prob, lr=self.cfg.lr)
                 _, loss, summary = self.sess.run([self.train_op, self.loss, self.merged_summaries], feed_dict=feed_dict)
+                perplexity = math.exp(float(loss)) if loss < 300 else float('inf')
+                prog.update(i + 1, [("global step", cur_step), ("train loss", loss), ("perplexity", perplexity)])
                 if cur_step % 10 == 0:
-                    perplexity = math.exp(float(loss)) if loss < 300 else float('inf')
-                    tqdm.write("----- Step %d -- Loss %.2f -- Perplexity %.2f" % (cur_step, loss, perplexity))
                     self.summary_writer.add_summary(summary, cur_step)
 
     def evaluate(self):
@@ -189,5 +197,3 @@ class Chatbot:
         feed_dict = self._get_feed_dict(data, keep_prob=1.0)
         predicts = self.sess.run([self.dec_predicts], feed_dict=feed_dict)
         pass
-
-

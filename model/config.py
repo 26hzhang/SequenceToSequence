@@ -20,12 +20,13 @@ class Config:
     grad_clip = 5.0  # gradient clip
     lr = 0.0001  # learning rate
     keep_prob = 0.55  # dropout keep probability
-    emb_dim = 1024  # word embedding size
-    num_units = 1024  # number of units for RNN cells
+    emb_dim = 300  # word embedding size
+    num_units = 256  # number of units for RNN cells
     num_layers = 2  # number of RNN layers
     attention = "Bahdanau"  # attention mechanism: None, "Bahdanau", "Luong"
     use_beam_search = False  # True to use beam search mechanism
     beam_size = 5  # beam size
+    max_to_keep = 5
 
     # paths
     ckpt_path = "ckpt/"
