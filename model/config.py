@@ -19,14 +19,16 @@ class Config:
     # hyperparameters
     grad_clip = 5.0  # gradient clip
     lr = 0.0001  # learning rate
-    keep_prob = 0.55  # dropout keep probability
+    keep_prob = 0.6  # dropout keep probability
     emb_dim = 300  # word embedding size
     num_units = 256  # number of units for RNN cells
     num_layers = 2  # number of RNN layers
     attention = "Bahdanau"  # attention mechanism: None, "Bahdanau", "Luong"
-    use_beam_search = False  # True to use beam search mechanism
+    use_beam_search = True  # True to use beam search mechanism (only for decode)
     beam_size = 5  # beam size
-    max_to_keep = 5
+    batch_size = 32  # batch size
+    epochs = 30  # training epochs
+    max_to_keep = 5  # maximal number of trained model to be kept
 
     # paths
     ckpt_path = "ckpt/"

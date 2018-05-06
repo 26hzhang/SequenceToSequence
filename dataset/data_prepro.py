@@ -115,6 +115,8 @@ def process_datasets(raw_data_dir, save_dir, train_ratio=0.95):
     movie_lines = os.path.join(raw_data_dir, "movie_lines.txt")
     movie_conversations = os.path.join(raw_data_dir, "movie_conversations.txt")
     # save path
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
     meta_path = os.path.join(save_dir, "metadata")
     dataset_path = os.path.join(save_dir, "dataset")
     # process data
@@ -126,24 +128,3 @@ def process_datasets(raw_data_dir, save_dir, train_ratio=0.95):
     train_size = int(len(dataset) * train_ratio)
     json_dump({"train_set": dataset[0:train_size], "test_set": dataset[train_size:]}, dataset_path)
     json_dump(metadata, meta_path)
-
-
-def main():  # for testing
-    # input path
-    movie_lines = os.path.join("raw", "movie_lines.txt")
-    movie_conversations = os.path.join("raw", "movie_conversations.txt")
-    # output path
-    meta_path = os.path.join("data", "metadata")
-    dataset_path = os.path.join("data", "dataset")
-    # process data
-    utterances = create_utterance_pair(movie_lines, movie_conversations)
-    word_vocab, word_dict = build_vocabulary(utterances)
-    dataset = build_dataset(utterances, word_dict)
-    metadata = {"dict": word_dict, "vocab": word_vocab}
-    # write to file
-    json_dump(dataset, dataset_path)
-    json_dump(metadata, meta_path)
-
-
-if __name__ == "__main__":
-    main()
