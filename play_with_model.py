@@ -1,17 +1,9 @@
 from model.config import Config
 from model.seq2seq_model import Chatbot
-from dataset.data_prepro import process_datasets
 import os
 import sys
 
-raw_data_dir = os.path.join("dataset", "raw")
-dataset_save_dir = os.path.join("dataset", "data")
-
-# process dataset
-if not os.path.exists(dataset_save_dir) or not os.listdir(dataset_save_dir):  # if dataset directory is empty
-    sys.stdout.write("No preprocessed dataset found, create them from raw data...\n")
-    sys.stdout.flush()
-    process_datasets(raw_data_dir, dataset_save_dir)
+dataset_save_dir = os.path.join("dataset", "data", "cornell")
 
 # create configurations
 sys.stdout.write("Load configurations...\n")
@@ -35,4 +27,3 @@ while sentence:
     sys.stdout.write("> ")
     sys.stdout.flush()
     sentence = sys.stdin.readline()
-

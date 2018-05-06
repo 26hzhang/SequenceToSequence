@@ -9,7 +9,7 @@ from tensorflow.python.util import nest
 from tensorflow.contrib.seq2seq import BahdanauAttention, LuongAttention, AttentionWrapper, TrainingHelper
 from tensorflow.contrib.seq2seq import BasicDecoder, dynamic_decode, BeamSearchDecoder, GreedyEmbeddingHelper
 from tensorflow.contrib.seq2seq.python.ops.beam_search_decoder import tile_batch
-from dataset.data_prepro import GO, EOS
+from dataset.data_processor import GO, EOS
 from model.data_utils import sentence_to_ids, ids_to_sentence
 from model.logger import Progbar
 

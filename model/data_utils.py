@@ -4,8 +4,8 @@ import codecs
 import random
 from tqdm import tqdm
 from nltk import word_tokenize
-from dataset.data_prepro import cleanup_sentence
-from dataset.data_prepro import GO, EOS, PAD, UNK
+from dataset.data_processor import cleanup_sentence
+from dataset.data_processor import GO, EOS, PAD, UNK
 
 
 def load_data(filename):
