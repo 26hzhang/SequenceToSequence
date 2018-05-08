@@ -5,6 +5,7 @@ from model.seq2seq_model import Chatbot
 import os
 import sys
 import tensorflow as tf
+import argparse
 
 
 def create_configurations():
@@ -125,4 +126,7 @@ def play_with_model(mode):
 
 
 if __name__ == "__main__":
-    play_with_model("train")
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--mode', type=str, required=True, help='set task mode (train | decode).')
+    args, _ = parser.parse_known_args()
+    play_with_model(args.mode)

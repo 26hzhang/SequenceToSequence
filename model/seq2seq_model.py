@@ -147,10 +147,18 @@ class Chatbot:
 
     def _build_model(self):
         with tf.variable_scope("embeddings"):
-            self.embeddings = tf.get_variable(name="embeddings", shape=[self.cfg.vocab_size, self.cfg.emb_dim],
+            if self.cfg.source_vocab_size > 0:  # means the source and target data are not the same
+                source_embs = tf.get_variable(name="source_embs", shape=[self.cfg.source_vocab_size, self.cfg.emb_dim],
                                               dtype=tf.float32, trainable=True)
-            source_emb = tf.nn.embedding_lookup(self.embeddings, self.enc_source)
-            target_emb = tf.nn.embedding_lookup(self.embeddings, self.dec_target_in)
+                self.embeddings = tf.get_variable(name="embeddings", shape=[self.cfg.vocab_size, self.cfg.emb_dim],
+                                                  dtype=tf.float32, trainable=True)
+                source_emb = tf.nn.embedding_lookup(source_embs, self.enc_source)
+                target_emb = tf.nn.embedding_lookup(self.embeddings, self.dec_target_in)
+            else:  # source and target data are the same, typically for chat/dialogue corpus
+                self.embeddings = tf.get_variable(name="embeddings", shape=[self.cfg.vocab_size, self.cfg.emb_dim],
+                                                  dtype=tf.float32, trainable=True)
+                source_emb = tf.nn.embedding_lookup(self.embeddings, self.enc_source)
+                target_emb = tf.nn.embedding_lookup(self.embeddings, self.dec_target_in)
 
         with tf.variable_scope("encoder"):
             enc_cells = self._create_encoder_cell()

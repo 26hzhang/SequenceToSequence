@@ -6,6 +6,7 @@ from model.data_utils import load_data
 class Config:
     def __init__(self, tf_config):
         # dataset
+        self.task_name = tf_config["dataset_name"]
         self.ckpt_path = tf_config["checkpoint_path"]
         self.summary_dir = tf_config["summary_path"]
         if not os.path.exists(self.ckpt_path):
@@ -16,6 +17,7 @@ class Config:
         dict_data = load_data(tf_config["target_vocabulary"])
         self.source_dict, self.target_dict = dict_data["source_dict"], dict_data["target_dict"]
         del dict_data
+        self.source_vocab_size = len(self.source_dict)
         self.vocab_size = len(self.target_dict)
         self.rev_target_dict = dict([(idx, word) for word, idx in self.target_dict.items()])
         self.rev_source_dict = dict([(idx, word) for word, idx in self.source_dict.items()])

@@ -104,6 +104,7 @@ ENV/
 ckpt/
 summary/
 dataset/data/
+dataset/raw/
 .idea/
 .DS_Store
 *.DS_Store
