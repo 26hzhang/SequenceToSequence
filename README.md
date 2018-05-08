@@ -1,8 +1,8 @@
-# Chatbot via Sequence to Sequence
+# Sequence to Sequence Learning
 
 ![](https://img.shields.io/badge/Python-3.6.5-brightgreen.svg) ![](https://img.shields.io/badge/Tensorflow-1.8.0-yellowgreen.svg)
 
-This is a 
+This repository builds a sequence to sequence learning algorithm with attention mechanism, which aims to tackle some practical tasks such as simple dialogue, machine translation, pronounce to word and etc. This repo is implemented by tensorflow.
 
 ### Usage
 Before starting the experiment, you need to pull the data first (_use cornell dataset as example_):
@@ -45,10 +45,22 @@ List of datasets that the mode of this repository is able to handle.
 - [x] [Cornell Movie--Dialogs Corpus](http://www.cs.cornell.edu/~cristian/Cornell_Movie-Dialogs_Corpus.html).
 - [x] Twitter Chat, borrowed from [[marsan-ma/chat_corpus]](https://github.com/Marsan-Ma/chat_corpus/), with 700k lines tweets, where odd lines are tweets and even lines are responded tweets.
 - [x] [CMU Pronouncing Dictionary](http://svn.code.sf.net/p/cmusphinx/code/trunk/cmudict/cmudict-0.7b).
+- [IWSLT 2012 MT Track](http://hltc.cs.ust.hk/iwslt/index.php/evaluation-campaign/ted-task.html#MTtrack) dataset.
+- [IWSLT Evaluation 2016 MT Track](https://sites.google.com/site/iwsltevaluation2016/mt-track) dataset.
+
+### TODO List
+- [x] Build basic model.
+- [x] Add Bahdanau and Luong attention.
+- [x] Add dropout wrapper
+- Add residual wrapper.
+- Add bidirectional rnn for encoder.
+- Add sub-word module, ref: [[BPE]](https://github.com/rsennrich/subword-nmt).
+- Add GNMTAttentionMultiCell wrapper, ref: [[Google’s Neural Machine Translation System: Bridging the Gap between Human and Machine Translation]](https://arxiv.org/pdf/1609.08144.pdf). source: [[tensorflow/nmt/nmt/gnmt_model.py]](https://github.com/tensorflow/nmt/blob/master/nmt/gnmt_model.py).
+- Add BLEU measurement.
 
 ### Reference
 - [tensorflow/nmt](https://github.com/tensorflow/nmt).
 - [suriyadeepan/practical_seq2seq](https://github.com/suriyadeepan/practical_seq2seq).
 - [JayParks/tf-seq2seq](https://github.com/JayParks/tf-seq2seq).
-- [lc222/seq2seq_chatbot_new](https://github.com/lc222/seq2seq_chatbot_new).
+- [google/seq2seq](https://github.com/google/seq2seq).
 - [marsan-ma/chat_corpus](https://github.com/Marsan-Ma/chat_corpus/).
