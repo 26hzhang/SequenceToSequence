@@ -12,7 +12,7 @@ from model.data_utils import GO, EOS
 from model.logger import Progbar
 
 
-class Chatbot:
+class SequenceToSequence:
     def __init__(self, config, mode="train", resume_training=False, model_name="Seq2SeqChatbot"):
         self.cfg = config
         self.mode = mode

@@ -1,7 +1,7 @@
 from dataset.data_twitter import cleanup_sentence, process_twitter
 from model.data_utils import batchnize_dataset, process_batch_data, UNK, PAD, GO, EOS
 from model.config import Config
-from model.seq2seq_model import Chatbot
+from model.seq2seq_model import SequenceToSequence
 from nltk import word_tokenize
 import os
 import sys
@@ -98,21 +98,21 @@ def play_with_model(mode):
         # build model and start training
         sys.stdout.write("Building model...\n")
         sys.stdout.flush()
-        chatbot = Chatbot(config, mode="train")
-        chatbot.train(train_batches, test_batches, epochs=config.epochs)
+        seq2seq_model = SequenceToSequence(config, mode="train")
+        seq2seq_model.train(train_batches, test_batches, epochs=config.epochs)
     elif mode == "decode":
         # build model and start training
         sys.stdout.write("Building model...\n")
         sys.stdout.flush()
-        chatbot = Chatbot(config, mode="decode")
-        chatbot.restore_last_session()
+        seq2seq_model = SequenceToSequence(config, mode="decode")
+        seq2seq_model.restore_last_session()
         sys.stdout.write("> ")
         sys.stdout.flush()
         top_n = False  # if beam search, return all decoded results or just the first one
         sentence = sys.stdin.readline()
         data = sentence_to_ids(sentence, config.target_dict)
         while sentence:
-            predict_ids = chatbot.inference(data)
+            predict_ids = seq2seq_model.inference(data)
             response = ids_to_sentence(predict_ids, config.rev_target_dict, config.target_dict)[0]  # batch_size == 1
             print(response)
             if top_n:
