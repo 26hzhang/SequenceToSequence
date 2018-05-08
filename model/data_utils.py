@@ -3,9 +3,11 @@ import pickle
 import codecs
 import random
 from tqdm import tqdm
-from nltk import word_tokenize
-from dataset.data_processor import cleanup_sentence
-from dataset.data_processor import GO, EOS, PAD, UNK
+
+PAD = "<PAD>"
+UNK = "<UNK>"
+GO = "<GO>"
+EOS = "<EOS>"
 
 
 def load_data(filename):
@@ -29,10 +31,10 @@ def process_batch_data(batch_lu, batch_ru, word_dict):
     for lu, ru in zip(batch_lu, batch_ru):
         # reverse encoder input and add PAD at the begin
         lu = [word_dict[PAD]] * (max_lu_len - len(lu)) + list(reversed(lu))  # reverse and PAD encoder input
-        # add GO at the begin and add PAD at the end
+        # add GO at the begin and add PAD at the end for decoder input
         ru_in = [word_dict[GO]] + ru + [word_dict[PAD]] * (max_ru_len - len(ru))  # add GO for decoder input
-        # add EOS at the end and add PAD at the end
-        ru_out = ru + [word_dict[EOS]] + [word_dict[PAD]] * (max_ru_len - len(ru))  # add EOS for decoder output
+        # add PAD and EOS at the end for decoder output
+        ru_out = ru + [word_dict[PAD]] * (max_ru_len - len(ru)) + [word_dict[EOS]]  # add EOS for decoder output
         b_lu.append(lu)
         b_ru_in.append(ru_in)
         b_ru_out.append(ru_out)
@@ -65,29 +67,3 @@ def batchnize_dataset(filename, batch_size, word_dict):
     for batch in tqdm(dataset_batch_iter(dataset["test_set"], batch_size, word_dict), desc="Prepare test batches"):
         test_batches.append(batch)
     return train_batches, test_batches
-
-
-def sentence_to_ids(sentence, word_dict):
-    if sentence is None or len(sentence) == 0:
-        return None
-    sentence = cleanup_sentence(sentence)
-    tokens = word_tokenize(sentence)
-    ids = [word_dict.get(token, word_dict[UNK]) for token in tokens]
-    return process_batch_data([ids], [[]], word_dict)  # the decode data is not used
-
-
-def ids_to_sentence(predict_ids, rev_word_dict, beam_size):
-    """
-    :param predict_ids: if GreedyDecoder -- shape = (batch_size, max_time_step, 1)
-                        if BeamSearchDecoder -- shape = (batch_size, max_time_step, beam_width)
-    :param rev_word_dict: reversed word dict, id-word pairs
-    :param beam_size: beam size
-    :return: sentences
-    """
-    sentences = []
-    for predict in predict_ids:
-        for i in range(beam_size):
-            pred_list = predict[:, :, i]
-            sent = [rev_word_dict.get(idx, UNK) for idx in pred_list[0]]
-            sentences.append(" ".join(sent))
-    return sentences

@@ -2,15 +2,13 @@ import tensorflow as tf
 import numpy as np
 import random
 import math
-from tqdm import tqdm
-from tensorflow.python.ops.rnn_cell import LSTMCell, MultiRNNCell, DropoutWrapper
+from tensorflow.python.ops.rnn_cell import LSTMCell, GRUCell, MultiRNNCell, DropoutWrapper
 from tensorflow.python.ops.rnn import dynamic_rnn
 from tensorflow.python.util import nest
 from tensorflow.contrib.seq2seq import BahdanauAttention, LuongAttention, AttentionWrapper, TrainingHelper
 from tensorflow.contrib.seq2seq import BasicDecoder, dynamic_decode, BeamSearchDecoder, GreedyEmbeddingHelper
 from tensorflow.contrib.seq2seq.python.ops.beam_search_decoder import tile_batch
-from dataset.data_processor import GO, EOS
-from model.data_utils import sentence_to_ids, ids_to_sentence
+from model.data_utils import GO, EOS
 from model.logger import Progbar
 
 
@@ -33,8 +31,9 @@ class Chatbot:
         self.merged_summaries, self.summary_writer = None, None
         self._add_placeholders()
         self._build_model()
-        self._build_loss_op()
-        self._build_train_op()
+        if self.mode == "train":
+            self._build_loss_op()
+            self._build_train_op()
         self.cfg.logger.info("number of trainable parameters: {}.".format(np.sum([np.prod(v.get_shape().as_list())
                                                                                   for v in tf.trainable_variables()])))
         self.initialize_session()
@@ -46,16 +45,9 @@ class Chatbot:
         self.saver = tf.train.Saver(max_to_keep=self.cfg.max_to_keep)
         self.sess.run(tf.global_variables_initializer())
         ckpt = tf.train.get_checkpoint_state(self.cfg.ckpt_path)
-        if self.resume_training:
-            if not ckpt:
-                print("No checkpoint found in directory %s. Starting a new training session..." % self.cfg.ckpt_path)
-                return
-            ckpt_path = ckpt.model_checkpoint_path
-            self.start_epoch = int(ckpt_path.split("-")[-1]) + 1
-            print("Resuming training from {}, start epoch: {}".format(self.cfg.ckpt_path, self.start_epoch))
-            self.saver.restore(self.sess, ckpt_path)
-        else:
-            if not ckpt:
+        if self.mode == "train" and self.resume_training:
+            if not (ckpt and ckpt.model_checkpoint_path):
+                print("No checkpoint found in directory %s. Start a new training session..." % self.cfg.ckpt_path)
                 return
             r = input("Checkpoint found in {}. Do you want to resume this training session?\n(y)es | (n)o : "
                       .format(self.cfg.ckpt_path))
@@ -113,6 +105,46 @@ class Chatbot:
             feed_dict[self.lr] = lr
         return feed_dict
 
+    def _create_rnn_cell(self):
+        cell = GRUCell(self.cfg.num_units) if self.cfg.cell_type == "gru" else LSTMCell(self.cfg.num_units)
+        if self.cfg.use_dropout:
+            cell = DropoutWrapper(cell, output_keep_prob=self.keep_prob)
+        return cell
+
+    def _create_encoder_cell(self):
+        return MultiRNNCell([self._create_rnn_cell() for _ in range(self.cfg.num_layers)])
+
+    def _create_decoder_cell(self, enc_outputs, enc_states, enc_seq_len):
+        if self.use_beam_search:
+            enc_outputs = tile_batch(enc_outputs, multiplier=self.cfg.beam_size)
+            enc_states = nest.map_structure(lambda s: tile_batch(s, self.cfg.beam_size), enc_states)
+            enc_seq_len = tile_batch(self.enc_seq_len, multiplier=self.cfg.beam_size)
+        batch_size = self.batch_size * self.cfg.beam_size if self.use_beam_search else self.batch_size
+        with tf.variable_scope("attention"):
+            if self.cfg.attention == "bahdanau":  # Bahdanau attention mechanism
+                attention_mechanism = BahdanauAttention(num_units=self.cfg.num_units, memory=enc_outputs,
+                                                        memory_sequence_length=enc_seq_len)
+            elif self.cfg.attention == "luong":  # Luong attention mechanism
+                attention_mechanism = LuongAttention(num_units=self.cfg.num_units, memory=enc_outputs,
+                                                     memory_sequence_length=enc_seq_len)
+            else:  # default using Bahdanau attention mechanism
+                attention_mechanism = BahdanauAttention(num_units=self.cfg.num_units, memory=enc_outputs,
+                                                        memory_sequence_length=enc_seq_len)
+        if self.cfg.only_top_attention:  # apply attention mechanism only on the top decoder layer
+            cells = [self._create_rnn_cell() for _ in range(self.cfg.num_layers)]
+            cells[-1] = AttentionWrapper(cells[-1], attention_mechanism=attention_mechanism, name="Attention_Wrapper",
+                                         attention_layer_size=self.cfg.num_units, initial_cell_state=enc_states[-1])
+            initial_state = [state for state in enc_states]
+            initial_state[-1] = cells[-1].zero_state(batch_size=batch_size, dtype=tf.float32)
+            dec_init_states = tuple(initial_state)
+            cells = MultiRNNCell(cells)
+        else:
+            cells = MultiRNNCell([self._create_rnn_cell() for _ in range(self.cfg.num_layers)])
+            cells = AttentionWrapper(cells, attention_mechanism=attention_mechanism, name="Attention_Wrapper",
+                                     attention_layer_size=self.cfg.num_units, initial_cell_state=enc_states)
+            dec_init_states = cells.zero_state(batch_size=batch_size, dtype=tf.float32).clone(cell_state=enc_states)
+        return cells, dec_init_states
+
     def _build_model(self):
         with tf.variable_scope("embeddings"):
             self.embeddings = tf.get_variable(name="embeddings", shape=[self.cfg.vocab_size, self.cfg.emb_dim],
@@ -138,8 +170,8 @@ class Chatbot:
                 self.dec_output, _, _ = dynamic_decode(train_decoder, impute_finished=True,
                                                        maximum_iterations=self.max_dec_seq_len)
             else:  # "decode" mode
-                start_token = tf.ones(shape=[self.batch_size, ], dtype=tf.int32) * self.cfg.word_dict[GO]
-                end_token = self.cfg.word_dict[EOS]
+                start_token = tf.ones(shape=[self.batch_size, ], dtype=tf.int32) * self.cfg.target_dict[GO]
+                end_token = self.cfg.target_dict[EOS]
                 if self.use_beam_search:
                     infer_decoder = BeamSearchDecoder(self.dec_cells, self.embeddings, start_tokens=start_token,
                                                       end_token=end_token, initial_state=self.dec_init_states,
@@ -148,7 +180,7 @@ class Chatbot:
                     dec_helper = GreedyEmbeddingHelper(self.embeddings, start_token, end_token)
                     infer_decoder = BasicDecoder(self.dec_cells, helper=dec_helper, initial_state=self.dec_init_states,
                                                  output_layer=self.dense_layer)
-                infer_dec_output, _, _ = dynamic_decode(infer_decoder, maximum_iterations=10)
+                infer_dec_output, _, _ = dynamic_decode(infer_decoder, maximum_iterations=self.cfg.maximum_iterations)
                 if self.use_beam_search:
                     self.dec_predicts = infer_dec_output.predicted_ids
                 else:
@@ -170,38 +202,6 @@ class Chatbot:
             else:
                 self.train_op = optimizer.minimize(self.loss)
 
-    def _create_rnn_cell(self):
-        cell = LSTMCell(self.cfg.num_units)
-        cell = DropoutWrapper(cell, output_keep_prob=self.keep_prob)
-        return cell
-
-    def _create_encoder_cell(self):
-        return MultiRNNCell([self._create_rnn_cell() for _ in range(self.cfg.num_layers)])
-
-    def _create_decoder_cell(self, enc_outputs, enc_states, enc_seq_len):
-        if self.use_beam_search:
-            enc_outputs = tile_batch(enc_outputs, multiplier=self.cfg.beam_size)
-            enc_states = nest.map_structure(lambda s: tile_batch(s, self.cfg.beam_size), enc_states)
-            enc_seq_len = tile_batch(self.enc_seq_len, multiplier=self.cfg.beam_size)
-        with tf.variable_scope("attention"):
-            if self.cfg.attention == "Bahdanau":  # Bahdanau attention mechanism
-                attention_mechanism = BahdanauAttention(num_units=self.cfg.num_units, memory=enc_outputs,
-                                                        memory_sequence_length=enc_seq_len)
-            elif self.cfg.attention == "Luong":  # Luong attention mechanism
-                attention_mechanism = LuongAttention(num_units=self.cfg.num_units, memory=enc_outputs,
-                                                     memory_sequence_length=enc_seq_len)
-            else:  # default using Bahdanau attention mechanism
-                attention_mechanism = BahdanauAttention(num_units=self.cfg.num_units, memory=enc_outputs,
-                                                        memory_sequence_length=enc_seq_len)
-        cells = [self._create_rnn_cell() for _ in range(self.cfg.num_layers)]
-        cells[-1] = AttentionWrapper(cells[-1], attention_mechanism=attention_mechanism, name="Attention_Wrapper",
-                                     attention_layer_size=self.cfg.num_units, initial_cell_state=enc_states[-1])
-        batch_size = self.batch_size * self.cfg.beam_size if self.use_beam_search else self.batch_size
-        initial_state = [state for state in enc_states]
-        initial_state[-1] = cells[-1].zero_state(batch_size=batch_size, dtype=tf.float32)
-        dec_init_states = tuple(initial_state)
-        return MultiRNNCell(cells), dec_init_states
-
     def train(self, train_set, test_set, epochs, shuffle=True):
         self.cfg.logger.info("Start training...")
         self._add_summary()
@@ -220,16 +220,14 @@ class Chatbot:
                 prog.update(i + 1, [("Global Step", int(cur_step)), ("Train Loss", loss), ("Perplexity", perplexity)])
                 if cur_step % 10 == 0:
                     self.summary_writer.add_summary(summary, cur_step)
-                if cur_step % 100 == 0:
-                    self.evaluate(test_set, epoch)
             self.evaluate(test_set, epoch)
-            # save model each epoch
-            self.save_session(epoch)
+            self.save_session(epoch)  # save model for each epoch
+        self.cfg.logger.info("Training process finished. Total epochs: {}, total steps: {}".format(epochs, cur_step))
 
     def evaluate(self, dataset, epoch):
         losses = []
         perplexities = []
-        for batch_data in tqdm(dataset, desc=""):
+        for batch_data in dataset:
             feed_dict = self._get_feed_dict(batch_data, keep_prob=1.0)
             loss = self.sess.run(self.loss, feed_dict=feed_dict)
             perplexity = math.exp(float(loss)) if loss < 300 else float("inf")
@@ -240,11 +238,8 @@ class Chatbot:
         self.cfg.logger.info("Evaluate at epoch {} on test set: average loss - {}, average perplexity - {}"
                              .format(epoch, aver_loss, aver_perplexity))
 
-    def inference(self, sentence):
-        data = sentence_to_ids(sentence, self.cfg.word_dict)
+    def inference(self, data):  # used for infer, one sentence each time
         feed_dict = {self.enc_source: data["enc_input"], self.enc_seq_len: data["enc_seq_len"],
                      self.batch_size: data["batch_size"], self.keep_prob: 1.0}
-        predicts = self.sess.run([self.dec_predicts], feed_dict=feed_dict)
-        beam_size = self.cfg.beam_size if self.use_beam_search else 1
-        responses = ids_to_sentence(predicts, self.cfg.rev_word_dict, beam_size)
-        return responses
+        predicts = self.sess.run(self.dec_predicts, feed_dict=feed_dict)
+        return predicts
