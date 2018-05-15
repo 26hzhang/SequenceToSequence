@@ -13,12 +13,12 @@ from model.logger import Progbar
 
 
 class SequenceToSequence:
-    def __init__(self, config, mode="train", resume_training=False, model_name="Seq2SeqChatbot"):
+    def __init__(self, config, mode="train", resume_training=False, model_name="Seq2SeqModel"):
         self.cfg = config
         self.mode = mode
         self.resume_training, self.start_epoch = resume_training, 1
         self.model_name = model_name
-        self.use_beam_search = False
+        self.use_beam_search = False  # used only for decode mode
         if self.mode == "decode" and self.cfg.use_beam_search and self.cfg.beam_size > 1:
             self.use_beam_search = True
         ckpt = tf.train.get_checkpoint_state(self.cfg.ckpt_path)  # get checkpoint state
@@ -87,7 +87,7 @@ class SequenceToSequence:
         self.enc_source = tf.placeholder(dtype=tf.int32, shape=[None, None], name="encoder_input")
         self.dec_target_in = tf.placeholder(dtype=tf.int32, shape=[None, None], name="decoder_input")
         self.dec_target_out = tf.placeholder(dtype=tf.int32, shape=[None, None], name="decoder_output")
-        # shape = (batch_size)
+        # shape = (batch_size, )
         self.enc_seq_len = tf.placeholder(dtype=tf.int32, shape=[None], name="encoder_seq_length")
         self.dec_seq_len = tf.placeholder(dtype=tf.int32, shape=[None], name="decoder_seq_length")
         # hyper-parameters
@@ -96,9 +96,9 @@ class SequenceToSequence:
         self.lr = tf.placeholder(dtype=tf.float32, name="learning_rate")
 
     def _get_feed_dict(self, batch_data, keep_prob=None, lr=None):
-        feed_dict = {self.enc_source: batch_data["enc_input"], self.enc_seq_len: batch_data["enc_seq_len"],
-                     self.dec_target_in: batch_data["dec_input"], self.dec_target_out: batch_data["dec_output"],
-                     self.dec_seq_len: batch_data["dec_seq_len"], self.batch_size: batch_data["batch_size"]}
+        feed_dict = {self.enc_source: batch_data["source_in"], self.enc_seq_len: batch_data["source_len"],
+                     self.dec_target_in: batch_data["target_in"], self.dec_target_out: batch_data["target_out"],
+                     self.dec_seq_len: batch_data["target_len"], self.batch_size: batch_data["batch_size"]}
         if keep_prob is not None:
             feed_dict[self.keep_prob] = keep_prob
         if lr is not None:
@@ -215,6 +215,8 @@ class SequenceToSequence:
         self._add_summary()
         num_batches = len(train_set)
         cur_step = 0
+        cur_tolerance = 0
+        cur_test_loss = float("inf")
         for epoch in range(self.start_epoch, epochs + 1):
             if shuffle:
                 random.shuffle(train_set)
@@ -228,9 +230,15 @@ class SequenceToSequence:
                 prog.update(i + 1, [("Global Step", int(cur_step)), ("Train Loss", loss), ("Perplexity", perplexity)])
                 if cur_step % 10 == 0:
                     self.summary_writer.add_summary(summary, cur_step)
-            self.evaluate(test_set, epoch)
-            self.save_session(epoch)  # save model for each epoch
-        self.cfg.logger.info("Training process finished. Total epochs: {}, total steps: {}".format(epochs, cur_step))
+            test_loss = self.evaluate(test_set, epoch)
+            if test_loss <= cur_test_loss:
+                self.save_session(epoch)  # save model for each epoch
+                cur_test_loss = test_loss
+            else:
+                cur_tolerance += 1
+                if cur_tolerance > self.cfg.no_imprv_tolerance:
+                    break
+        self.cfg.logger.info("Training process finished. Total trained steps: {}".format(cur_step))
 
     def evaluate(self, dataset, epoch):
         losses = []
@@ -245,9 +253,10 @@ class SequenceToSequence:
         aver_perplexity = np.average(perplexities)
         self.cfg.logger.info("Evaluate at epoch {} on test set: average loss - {}, average perplexity - {}"
                              .format(epoch, aver_loss, aver_perplexity))
+        return aver_loss
 
     def inference(self, data):  # used for infer, one sentence each time
-        feed_dict = {self.enc_source: data["enc_input"], self.enc_seq_len: data["enc_seq_len"],
+        feed_dict = {self.enc_source: data["source_in"], self.enc_seq_len: data["source_len"],
                      self.batch_size: data["batch_size"], self.keep_prob: 1.0}
         predicts = self.sess.run(self.dec_predicts, feed_dict=feed_dict)
         return predicts

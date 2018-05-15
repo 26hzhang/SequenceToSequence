@@ -33,9 +33,13 @@ class Config:
         self.maximum_iterations = tf_config["maximum_iterations"]
         # training parameters
         self.lr = tf_config["learning_rate"]
+        self.use_lr_decay = tf_config["use_lr_decay"]
+        self.lr_decay = tf_config["lr_decay"]
         self.grad_clip = tf_config["grad_clip"]
         self.use_dropout = tf_config["use_dropout"]
         self.keep_prob = tf_config["keep_prob"]
+        self.use_residual = tf_config["use_residual"]
         self.batch_size = tf_config["batch_size"]
         self.epochs = tf_config["epochs"]
         self.max_to_keep = tf_config["max_to_keep"]
+        self.no_imprv_tolerance = tf_config["no_imprv_tolerance"]

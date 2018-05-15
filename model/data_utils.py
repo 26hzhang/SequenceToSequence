@@ -26,7 +26,8 @@ def load_data(filename):
 def process_batch_data(batch_lu, batch_ru, word_dict):
     batch_lu_len = [len(lu) for lu in batch_lu]
     max_lu_len = max(batch_lu_len)
-    max_ru_len = max([len(ru) for ru in batch_ru])
+    batch_ru_len = [len(ru) for ru in batch_ru]
+    max_ru_len = max(batch_ru_len)
     b_lu, b_ru_in, b_ru_out = [], [], []
     for lu, ru in zip(batch_lu, batch_ru):
         # reverse encoder input and add PAD at the begin
@@ -34,13 +35,13 @@ def process_batch_data(batch_lu, batch_ru, word_dict):
         # add GO at the begin and add PAD at the end for decoder input
         ru_in = [word_dict[GO]] + ru + [word_dict[PAD]] * (max_ru_len - len(ru))  # add GO for decoder input
         # add PAD and EOS at the end for decoder output
-        ru_out = ru + [word_dict[PAD]] * (max_ru_len - len(ru)) + [word_dict[EOS]]  # add EOS for decoder output
+        ru_out = ru + [word_dict[EOS]] + [word_dict[PAD]] * (max_ru_len - len(ru))  # add EOS for decoder output
         b_lu.append(lu)
         b_ru_in.append(ru_in)
         b_ru_out.append(ru_out)
-    batch_ru_len = [len(ru) for ru in b_ru_in]
-    return {"enc_input": b_lu, "enc_seq_len": batch_lu_len, "dec_input": b_ru_in, "dec_output": b_ru_out,
-            "dec_seq_len": batch_ru_len, "batch_size": len(b_lu)}
+    batch_ru_len = [x + 1 for x in batch_ru_len]  # add 1 for each because of GO and EOS token
+    return {"source_in": b_lu, "source_len": batch_lu_len, "target_in": b_ru_in, "target_out": b_ru_out,
+            "target_len": batch_ru_len, "batch_size": len(b_lu)}
 
 
 def dataset_batch_iter(dataset, batch_size, word_dict, shuffle=False):

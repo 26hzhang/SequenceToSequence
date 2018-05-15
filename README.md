@@ -35,7 +35,7 @@ Building model...
 number of trainable parameters: 62458644.
 Start training...
 Epoch 1 / 60:
-   1/4711 [..............................] - ETA: 14882s - Global Step: 1 - Train Loss: 9.2197 - Perplexity: 10094.0631
+   1/4711 [..............................] - ETA: 1468s - Global Step: 1 - Train Loss: 9.2197 - Perplexity: 10094.0631
 ...
 ```
 
@@ -53,6 +53,7 @@ List of datasets that the mode of this repository is able to handle.
 - [x] Add Bahdanau and Luong attention.
 - [x] Add dropout wrapper
 - Add residual wrapper.
+- Add learning rate decay.
 - Add bidirectional rnn for encoder.
 - Add sub-word module, ref: [[BPE]](https://github.com/rsennrich/subword-nmt).
 - Add GNMTAttentionMultiCell wrapper, ref: [[Google’s Neural Machine Translation System: Bridging the Gap between Human and Machine Translation]](https://arxiv.org/pdf/1609.08144.pdf). source: [[tensorflow/nmt/nmt/gnmt_model.py]](https://github.com/tensorflow/nmt/blob/master/nmt/gnmt_model.py).
