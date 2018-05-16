@@ -37,7 +37,7 @@ target input embedding shape: [None, None, 1024]
 bi-directional rnn output shape: [None, None, 2048]
 encoder input projection shape: [None, None, 1024]
 encoder output shape: [None, None, 1024]
-decoder rnn output shape: [None, None, 10004]
+decoder rnn output shape: [None, None, 10004] (vocab size)
 number of trainable parameters: 78197524.
 Start training...
 Epoch 1 / 60:
