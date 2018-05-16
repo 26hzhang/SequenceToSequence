@@ -61,7 +61,7 @@ List of datasets that the mode of this repository is able to handle.
 - [x] Add residual wrapper.
 - [x] Add learning rate decay.
 - [x] Add different optimizer
-- [ ] Add bidirectional rnn for encoder.
+- [x] Add bidirectional rnn for encoder.
 - [ ] Add sub-word module, ref: [[BPE]](https://github.com/rsennrich/subword-nmt).
 - [ ] Add GNMTAttentionMultiCell wrapper, ref: [[Google’s Neural Machine Translation System: Bridging the Gap between Human and Machine Translation]](https://arxiv.org/pdf/1609.08144.pdf). source: [[tensorflow/nmt/nmt/gnmt_model.py]](https://github.com/tensorflow/nmt/blob/master/nmt/gnmt_model.py).
 - [ ] Add BLEU measurement.
