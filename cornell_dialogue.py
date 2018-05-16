@@ -137,8 +137,7 @@ def play_with_model(mode):
 
 
 if __name__ == "__main__":
-    '''parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser()
     parser.add_argument('--mode', type=str, required=True, help='set task mode (train | decode).')
     args, _ = parser.parse_known_args()
-    play_with_model(args.mode)'''
-    play_with_model("train")
+    play_with_model(args.mode)
