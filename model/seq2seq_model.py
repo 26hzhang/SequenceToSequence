@@ -2,8 +2,8 @@ import tensorflow as tf
 import numpy as np
 import random
 import math
-from tensorflow.python.ops.rnn_cell import LSTMCell, GRUCell, MultiRNNCell, DropoutWrapper
-from tensorflow.python.ops.rnn import dynamic_rnn
+from tensorflow.python.ops.rnn_cell import LSTMCell, GRUCell, MultiRNNCell, DropoutWrapper, ResidualWrapper
+from tensorflow.python.ops.rnn import dynamic_rnn, bidirectional_dynamic_rnn
 from tensorflow.python.util import nest
 from tensorflow.contrib.seq2seq import BahdanauAttention, LuongAttention, AttentionWrapper, TrainingHelper
 from tensorflow.contrib.seq2seq import BasicDecoder, dynamic_decode, BeamSearchDecoder, GreedyEmbeddingHelper
@@ -41,6 +41,7 @@ class SequenceToSequence:
     def initialize_session(self):
         sess_config = tf.ConfigProto()
         sess_config.gpu_options.allow_growth = True
+        # sess_config.allow_soft_placement = True
         self.sess = tf.Session(config=sess_config)
         self.saver = tf.train.Saver(max_to_keep=self.cfg.max_to_keep)
         self.sess.run(tf.global_variables_initializer())
@@ -109,31 +110,40 @@ class SequenceToSequence:
         cell = GRUCell(self.cfg.num_units) if self.cfg.cell_type == "gru" else LSTMCell(self.cfg.num_units)
         if self.cfg.use_dropout:
             cell = DropoutWrapper(cell, output_keep_prob=self.keep_prob)
+        if self.cfg.use_residual:
+            cell = ResidualWrapper(cell)
         return cell
 
     def _create_encoder_cell(self):
         return MultiRNNCell([self._create_rnn_cell() for _ in range(self.cfg.num_layers)])
 
-    def _create_decoder_cell(self, enc_outputs, enc_states, enc_seq_len):
+    def _create_decoder_cell(self):
+        enc_outputs, enc_states, enc_seq_len = self.enc_outputs, self.enc_states, self.enc_seq_len
         if self.use_beam_search:
             enc_outputs = tile_batch(enc_outputs, multiplier=self.cfg.beam_size)
             enc_states = nest.map_structure(lambda s: tile_batch(s, self.cfg.beam_size), enc_states)
             enc_seq_len = tile_batch(self.enc_seq_len, multiplier=self.cfg.beam_size)
         batch_size = self.batch_size * self.cfg.beam_size if self.use_beam_search else self.batch_size
         with tf.variable_scope("attention"):
-            if self.cfg.attention == "bahdanau":  # Bahdanau attention mechanism
-                attention_mechanism = BahdanauAttention(num_units=self.cfg.num_units, memory=enc_outputs,
-                                                        memory_sequence_length=enc_seq_len)
-            elif self.cfg.attention == "luong":  # Luong attention mechanism
+            if self.cfg.attention == "luong":  # Luong attention mechanism
                 attention_mechanism = LuongAttention(num_units=self.cfg.num_units, memory=enc_outputs,
                                                      memory_sequence_length=enc_seq_len)
             else:  # default using Bahdanau attention mechanism
                 attention_mechanism = BahdanauAttention(num_units=self.cfg.num_units, memory=enc_outputs,
                                                         memory_sequence_length=enc_seq_len)
-        if self.cfg.only_top_attention:  # apply attention mechanism only on the top decoder layer
+
+        def cell_input_fn(inputs, attention):  # define cell input function to keep input/output dimension same
+            # reference: https://www.tensorflow.org/api_docs/python/tf/contrib/seq2seq/AttentionWrapper
+            if not self.cfg.use_attention_input_feeding:
+                return inputs
+            input_project = tf.layers.Dense(self.cfg.num_units, dtype=tf.float32, name='attn_input_feeding')
+            return input_project(tf.concat([inputs, attention], axis=-1))
+
+        if self.cfg.top_attention:  # apply attention mechanism only on the top decoder layer
             cells = [self._create_rnn_cell() for _ in range(self.cfg.num_layers)]
             cells[-1] = AttentionWrapper(cells[-1], attention_mechanism=attention_mechanism, name="Attention_Wrapper",
-                                         attention_layer_size=self.cfg.num_units, initial_cell_state=enc_states[-1])
+                                         attention_layer_size=self.cfg.num_units, initial_cell_state=enc_states[-1],
+                                         cell_input_fn=cell_input_fn)
             initial_state = [state for state in enc_states]
             initial_state[-1] = cells[-1].zero_state(batch_size=batch_size, dtype=tf.float32)
             dec_init_states = tuple(initial_state)
@@ -141,7 +151,8 @@ class SequenceToSequence:
         else:
             cells = MultiRNNCell([self._create_rnn_cell() for _ in range(self.cfg.num_layers)])
             cells = AttentionWrapper(cells, attention_mechanism=attention_mechanism, name="Attention_Wrapper",
-                                     attention_layer_size=self.cfg.num_units, initial_cell_state=enc_states)
+                                     attention_layer_size=self.cfg.num_units, initial_cell_state=enc_states,
+                                     cell_input_fn=cell_input_fn)
             dec_init_states = cells.zero_state(batch_size=batch_size, dtype=tf.float32).clone(cell_state=enc_states)
         return cells, dec_init_states
 
@@ -159,33 +170,56 @@ class SequenceToSequence:
                                                   dtype=tf.float32, trainable=True)
                 source_emb = tf.nn.embedding_lookup(self.embeddings, self.enc_source)
                 target_emb = tf.nn.embedding_lookup(self.embeddings, self.dec_target_in)
+            print("source embedding shape: {}".format(source_emb.get_shape().as_list()))
+            print("target input embedding shape: {}".format(target_emb.get_shape().as_list()))
 
         with tf.variable_scope("encoder"):
+            if self.cfg.use_bi_rnn:
+                with tf.variable_scope("bi-directional_rnn"):
+                    cell_fw = GRUCell(self.cfg.num_units) if self.cfg.cell_type == "gru" else \
+                        LSTMCell(self.cfg.num_units)
+                    cell_bw = GRUCell(self.cfg.num_units) if self.cfg.cell_type == "gru" else \
+                        LSTMCell(self.cfg.num_units)
+                    bi_outputs, _ = bidirectional_dynamic_rnn(cell_fw, cell_bw, source_emb, dtype=tf.float32,
+                                                              sequence_length=self.enc_seq_len)
+                    source_emb = tf.concat(bi_outputs, axis=-1)
+                    print("bi-directional rnn output shape: {}".format(source_emb.get_shape().as_list()))
+            input_project = tf.layers.Dense(units=self.cfg.num_units, dtype=tf.float32, name="input_projection")
+            source_emb = input_project(source_emb)
+            print("encoder input projection shape: {}".format(source_emb.get_shape().as_list()))
             enc_cells = self._create_encoder_cell()
-            enc_outputs, enc_states = dynamic_rnn(enc_cells, source_emb, sequence_length=self.enc_seq_len,
-                                                  dtype=tf.float32)
+            self.enc_outputs, self.enc_states = dynamic_rnn(enc_cells, source_emb, sequence_length=self.enc_seq_len,
+                                                            dtype=tf.float32)
+            print("encoder output shape: {}".format(self.enc_outputs.get_shape().as_list()))
 
         with tf.variable_scope("decoder"):
             self.max_dec_seq_len = tf.reduce_max(self.dec_seq_len, name="max_dec_seq_len")
-            self.dec_cells, self.dec_init_states = self._create_decoder_cell(enc_outputs, enc_states, self.enc_seq_len)
-            # define output layer
-            initializer = tf.truncated_normal_initializer(mean=0.0, stddev=0.1)
-            self.dense_layer = tf.layers.Dense(units=self.cfg.vocab_size, kernel_initializer=initializer)
+            self.dec_cells, self.dec_init_states = self._create_decoder_cell()
+            # define input and output projection layer
+            input_project = tf.layers.Dense(units=self.cfg.num_units, name="input_projection")
+            self.dense_layer = tf.layers.Dense(units=self.cfg.vocab_size, name="output_projection")
             if self.mode == "train":  # either "train" or "decode"
+                target_emb = input_project(target_emb)
                 train_helper = TrainingHelper(target_emb, sequence_length=self.dec_seq_len, name="train_helper")
                 train_decoder = BasicDecoder(self.dec_cells, helper=train_helper, output_layer=self.dense_layer,
                                              initial_state=self.dec_init_states)
                 self.dec_output, _, _ = dynamic_decode(train_decoder, impute_finished=True,
                                                        maximum_iterations=self.max_dec_seq_len)
+                print("decoder output shape: {} (vocab size)".format(self.dec_output.rnn_output.get_shape().as_list()))
             else:  # "decode" mode
                 start_token = tf.ones(shape=[self.batch_size, ], dtype=tf.int32) * self.cfg.target_dict[GO]
                 end_token = self.cfg.target_dict[EOS]
+
+                def inputs_project(inputs):
+                    return input_project(tf.nn.embedding_lookup(self.embeddings, inputs))
+
                 if self.use_beam_search:
-                    infer_decoder = BeamSearchDecoder(self.dec_cells, self.embeddings, start_tokens=start_token,
-                                                      end_token=end_token, initial_state=self.dec_init_states,
+                    infer_decoder = BeamSearchDecoder(self.dec_cells, embedding=inputs_project, end_token=end_token,
+                                                      start_tokens=start_token, initial_state=self.dec_init_states,
                                                       beam_width=self.cfg.beam_size, output_layer=self.dense_layer)
                 else:
-                    dec_helper = GreedyEmbeddingHelper(self.embeddings, start_token, end_token)
+                    dec_helper = GreedyEmbeddingHelper(embedding=inputs_project, start_tokens=start_token,
+                                                       end_token=end_token)
                     infer_decoder = BasicDecoder(self.dec_cells, helper=dec_helper, initial_state=self.dec_init_states,
                                                  output_layer=self.dense_layer)
                 infer_dec_output, _, _ = dynamic_decode(infer_decoder, maximum_iterations=self.cfg.maximum_iterations)
@@ -202,7 +236,18 @@ class SequenceToSequence:
 
     def _build_train_op(self):
         with tf.variable_scope("train_step"):
-            optimizer = tf.train.AdamOptimizer(learning_rate=self.lr)
+            if self.cfg.optimizer == 'adagrad':
+                optimizer = tf.train.AdagradOptimizer(learning_rate=self.lr)
+            elif self.cfg.optimizer == 'sgd':
+                optimizer = tf.train.GradientDescentOptimizer(learning_rate=self.lr)
+            elif self.cfg.optimizer == 'rmsprop':
+                optimizer = tf.train.RMSPropOptimizer(learning_rate=self.lr)
+            elif self.cfg.optimizer == 'adadelta':
+                optimizer = tf.train.AdadeltaOptimizer(learning_rate=self.lr)
+            else:  # default adam optimizer
+                if self.cfg.optimizer != 'adam':
+                    print('Unknown optimizing method {}. Using default adam optimizer.'.format(self.cfg.optimizer))
+                optimizer = tf.train.AdamOptimizer(learning_rate=self.lr)
             if self.cfg.grad_clip is not None and self.cfg.grad_clip > 0:
                 grads, vs = zip(*optimizer.compute_gradients(self.loss))
                 grads, _ = tf.clip_by_global_norm(grads, self.cfg.grad_clip)
@@ -230,6 +275,8 @@ class SequenceToSequence:
                 prog.update(i + 1, [("Global Step", int(cur_step)), ("Train Loss", loss), ("Perplexity", perplexity)])
                 if cur_step % 10 == 0:
                     self.summary_writer.add_summary(summary, cur_step)
+            if self.cfg.use_lr_decay:  # simple learning rate decay, performs each epoch
+                self.cfg.lr *= self.cfg.lr_decay
             test_loss = self.evaluate(test_set, epoch)
             if test_loss <= cur_test_loss:
                 self.save_session(epoch)  # save model for each epoch

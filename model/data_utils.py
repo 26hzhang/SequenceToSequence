@@ -30,8 +30,9 @@ def process_batch_data(batch_lu, batch_ru, word_dict):
     max_ru_len = max(batch_ru_len)
     b_lu, b_ru_in, b_ru_out = [], [], []
     for lu, ru in zip(batch_lu, batch_ru):
-        # reverse encoder input and add PAD at the begin
-        lu = [word_dict[PAD]] * (max_lu_len - len(lu)) + list(reversed(lu))  # reverse and PAD encoder input
+        # reverse encoder input and add PAD at the end
+        # lu = list(reversed(lu)) + [word_dict[PAD]] * (max_lu_len - len(lu))  # reverse and PAD encoder input
+        lu = lu + [word_dict[PAD]] * (max_lu_len - len(lu))  # reverse and PAD encoder input
         # add GO at the begin and add PAD at the end for decoder input
         ru_in = [word_dict[GO]] + ru + [word_dict[PAD]] * (max_ru_len - len(ru))  # add GO for decoder input
         # add PAD and EOS at the end for decoder output
@@ -44,7 +45,7 @@ def process_batch_data(batch_lu, batch_ru, word_dict):
             "target_len": batch_ru_len, "batch_size": len(b_lu)}
 
 
-def dataset_batch_iter(dataset, batch_size, word_dict, shuffle=False):
+def dataset_batch_iter(dataset, batch_size, word_dict, shuffle):
     if shuffle:
         random.shuffle(dataset)
     batch_lu, batch_ru = [], []
@@ -58,13 +59,14 @@ def dataset_batch_iter(dataset, batch_size, word_dict, shuffle=False):
         yield process_batch_data(batch_lu, batch_ru, word_dict)
 
 
-def batchnize_dataset(filename, batch_size, word_dict):
+def batchnize_dataset(filename, batch_size, word_dict, shuffle=True):
     dataset = load_data(filename)
     train_batches = []
-    for batch in tqdm(dataset_batch_iter(dataset["train_set"], batch_size, word_dict, shuffle=True),
+    for batch in tqdm(dataset_batch_iter(dataset["train_set"], batch_size, word_dict, shuffle=shuffle),
                       desc="Prepare train batches"):
         train_batches.append(batch)
     test_batches = []
-    for batch in tqdm(dataset_batch_iter(dataset["test_set"], batch_size, word_dict), desc="Prepare test batches"):
+    for batch in tqdm(dataset_batch_iter(dataset["test_set"], batch_size, word_dict, shuffle=shuffle),
+                      desc="Prepare test batches"):
         test_batches.append(batch)
     return train_batches, test_batches
