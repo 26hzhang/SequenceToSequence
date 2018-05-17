@@ -14,7 +14,7 @@ def create_configurations():
     tf.flags.DEFINE_string("dataset_name", "twitter", "dataset name")
     tf.flags.DEFINE_string("raw_data_dir", "dataset/raw/twitter", "path to the raw data directory")
     tf.flags.DEFINE_string("save_dir", "dataset/data/twitter", "path to the processed dataset directory")
-    tf.flags.DEFINE_string("target_vocabulary", "dataset/data/twitter/metadata.json", "path to the target vocabulary")
+    tf.flags.DEFINE_string("vocabulary", "dataset/data/twitter/vocabulary.json", "path to the vocabulary")
     tf.flags.DEFINE_string("dataset", "dataset/data/twitter/dataset.json", "path to the train and test datasets")
     tf.flags.DEFINE_integer("max_sent_len", 30, "maximal number of words for each sentence")
     tf.flags.DEFINE_integer("min_sent_len", 2, "minimal number of words for each sentence")
@@ -47,7 +47,7 @@ def create_configurations():
     tf.flags.DEFINE_integer("max_to_keep", 5, "maximum trained model to be saved")
     tf.flags.DEFINE_integer("no_imprv_tolerance", 5, "no improvement tolerance")
     tf.flags.DEFINE_string("checkpoint_path", "ckpt/twitter/", "path to save model checkpoints")
-    tf.flags.DEFINE_string("summary_path", "ckpt/cornell/twitter/", "path to save summaries")
+    tf.flags.DEFINE_string("summary_path", "ckpt/twitter/summary/", "path to save summaries")
     return tf.flags.FLAGS.flag_values_dict()
 
 

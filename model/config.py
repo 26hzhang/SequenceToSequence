@@ -14,7 +14,7 @@ class Config:
         if not os.path.exists(self.summary_dir):
             os.makedirs(self.summary_dir)
         self.logger = get_logger(os.path.join(self.ckpt_path, "log.txt"))
-        dict_data = load_data(tf_config["target_vocabulary"])
+        dict_data = load_data(tf_config["vocabulary"])
         self.source_dict, self.target_dict = dict_data["source_dict"], dict_data["target_dict"]
         del dict_data
         self.source_vocab_size = len(self.source_dict)

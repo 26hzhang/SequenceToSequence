@@ -73,13 +73,13 @@ def process_cmudict(tf_config):
     save_path = tf_config["save_dir"]
     if not os.path.exists(save_path):
         os.makedirs(save_path)
-    meta_path = os.path.join(save_path, "metadata")
+    vocab_path = os.path.join(save_path, "vocabulary")
     dataset_path = os.path.join(save_path, "dataset")
     # process data
     char_dict, phoneme_dict = build_cmudict_vocabulary(word_phoneme_pairs)
     dataset = build_cmudict_dataset(word_phoneme_pairs, char_dict, phoneme_dict)
-    meta_data = {"source_dict": phoneme_dict, "target_dict": char_dict}
+    vocabulary = {"source_dict": phoneme_dict, "target_dict": char_dict}
     # write to file
     train_size = int(len(dataset) * tf_config["train_ratio"])
     json_dump({"train_set": dataset[0:train_size], "test_set": dataset[train_size:]}, dataset_path)
-    json_dump(meta_data, meta_path)
+    json_dump(vocabulary, vocab_path)

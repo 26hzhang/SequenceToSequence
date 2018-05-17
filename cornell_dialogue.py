@@ -14,7 +14,7 @@ def create_configurations():
     tf.flags.DEFINE_string("dataset_name", "cornell", "dataset name")
     tf.flags.DEFINE_string("raw_data_dir", "dataset/raw/cornell", "path to the raw data directory")
     tf.flags.DEFINE_string("save_dir", "dataset/data/cornell", "path to the processed dataset directory")
-    tf.flags.DEFINE_string("target_vocabulary", "dataset/data/cornell/metadata.json", "path to the target vocabulary")
+    tf.flags.DEFINE_string("vocabulary", "dataset/data/cornell/vocabulary.json", "path to the vocabulary")
     tf.flags.DEFINE_string("dataset", "dataset/data/cornell/dataset.json", "path to the train and test datasets")
     tf.flags.DEFINE_integer("max_sent_len", 30, "maximal number of words for each sentence")
     tf.flags.DEFINE_integer("min_sent_len", 2, "minimal number of words for each sentence")

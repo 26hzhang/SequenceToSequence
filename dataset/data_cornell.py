@@ -118,15 +118,15 @@ def process_cornell(tf_config):
     save_path = tf_config["save_dir"]
     if not os.path.exists(save_path):
         os.makedirs(save_path)
-    meta_path = os.path.join(save_path, "metadata")
+    vocab_path = os.path.join(save_path, "vocabulary")
     dataset_path = os.path.join(save_path, "dataset")
     # process data
     utterances = create_cornell_utter_pairs(movie_lines, movie_conversations, tf_config["max_sent_len"],
                                             tf_config["min_sent_len"], tf_config["only_alphanumeric"])
     word_vocab, word_dict = build_vocabulary(utterances, tf_config["vocab_size"])
     dataset = build_dataset(utterances, word_dict)
-    metadata = {"source_dict": {}, "target_dict": word_dict}
+    vocabulary = {"source_dict": {}, "target_dict": word_dict}
     # write to file
     train_size = int(len(dataset) * tf_config["train_ratio"])
     json_dump({"train_set": dataset[0:train_size], "test_set": dataset[train_size:]}, dataset_path)
-    json_dump(metadata, meta_path)
+    json_dump(vocabulary, vocab_path)
