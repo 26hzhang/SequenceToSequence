@@ -246,7 +246,7 @@ class SequenceToSequence:
                 optimizer = tf.train.AdadeltaOptimizer(learning_rate=self.lr)
             else:  # default adam optimizer
                 if self.cfg.optimizer != 'adam':
-                    print('Unknown optimizing method {}. Using default adam optimizer.'.format(self.cfg.optimizer))
+                    print('Unsupported optimizing method {}. Using default adam optimizer.'.format(self.cfg.optimizer))
                 optimizer = tf.train.AdamOptimizer(learning_rate=self.lr)
             if self.cfg.grad_clip is not None and self.cfg.grad_clip > 0:
                 grads, vs = zip(*optimizer.compute_gradients(self.loss))
