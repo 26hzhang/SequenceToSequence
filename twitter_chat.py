@@ -117,9 +117,9 @@ def play_with_model(mode):
         sys.stdout.flush()
         top_n = False  # if beam search, return all decoded results or just the first one
         sentence = sys.stdin.readline()
-        data = sentence_to_ids(sentence, config.target_dict)
+        sent_ids = sentence_to_ids(sentence, config.target_dict)
         while sentence:
-            predict_ids = seq2seq_model.inference(data)
+            predict_ids = seq2seq_model.inference(sent_ids)
             response = ids_to_sentence(predict_ids, config.rev_target_dict, config.target_dict)[0]  # batch_size == 1
             print(response)
             if top_n:
@@ -131,7 +131,7 @@ def play_with_model(mode):
             sentence = sys.stdin.readline()
             if sentence == "exit":
                 exit(0)
-            data = sentence_to_ids(sentence, config.target_dict)
+            sent_ids = sentence_to_ids(sentence, config.target_dict)
     else:
         raise ValueError("ERROR: Unknown mode name {}, support modes: (train | decode)".format(mode))
 

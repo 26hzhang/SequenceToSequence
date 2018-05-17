@@ -6,16 +6,12 @@ import os
 from tqdm import tqdm
 from collections import Counter
 from nltk import word_tokenize
+from model.data_utils import PAD, UNK, GO, EOS
 
 special_character = re.compile(r"[^A-Za-z_\d,.;!'\- ]", re.IGNORECASE)
 alphanumeric_character = re.compile(r"[^A-Za-z_\d\- ]", re.IGNORECASE)
 duplicate_punct = re.compile(r"[?.!,;]+(?=[?.!,;])", re.IGNORECASE)
 connect_punct = re.compile(r"-+|_+", re.IGNORECASE)
-
-PAD = "<PAD>"
-UNK = "<UNK>"
-GO = "<GO>"
-EOS = "<EOS>"
 
 
 def cleanup_sentence(sent, only_alphanumeric):
