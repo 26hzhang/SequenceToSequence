@@ -33,7 +33,7 @@ def create_configurations():
     tf.flags.DEFINE_integer("beam_size", 5, "beam size")
     tf.flags.DEFINE_boolean("use_dropout", True, "use dropout for rnn cells")
     tf.flags.DEFINE_boolean("use_residual", True, "use residual connection for rnn cells")
-    tf.flags.DEFINE_boolean('use_attention_input_feeding', False, 'Use input feeding method in attentional decoder')
+    tf.flags.DEFINE_boolean('use_attention_input_feeding', True, 'Use input feeding method in attentional decoder')
     tf.flags.DEFINE_integer("maximum_iterations", 100, "maximum iterations while decoder generates outputs")
     # training parameters
     tf.flags.DEFINE_float("learning_rate", 0.001, "learning rate")
