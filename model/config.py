@@ -1,6 +1,5 @@
 import os
-from model.logger import get_logger
-from model.data_utils import load_data
+from utils import get_logger, load_data
 
 
 class Config:

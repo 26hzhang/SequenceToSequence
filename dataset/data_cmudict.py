@@ -4,7 +4,7 @@ import ujson
 import os
 from tqdm import tqdm
 from collections import Counter
-from model.data_utils import PAD, UNK, GO, EOS
+from utils import PAD, UNK, GO, EOS
 
 
 def pickle_dump(data, save_path, suffix=".pkl"):

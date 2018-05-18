@@ -6,7 +6,7 @@ import os
 from tqdm import tqdm
 from collections import Counter
 from nltk import word_tokenize
-from model.data_utils import PAD, UNK, GO, EOS
+from utils import PAD, UNK, GO, EOS
 
 special_character = re.compile(r"[^A-Za-z_\d,.;!'\- ]", re.IGNORECASE)
 alphanumeric_character = re.compile(r"[^A-Za-z_\d\- ]", re.IGNORECASE)

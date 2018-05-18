@@ -1,7 +1,6 @@
 from dataset.data_cmudict import process_cmudict
-from model.data_utils import batchnize_dataset, process_batch_data, UNK, PAD, GO, EOS
-from model.config import Config
-from model.seq2seq_model import SequenceToSequence
+from utils import batchnize_dataset, process_batch_data, UNK, PAD, GO, EOS
+from model import Config, SequenceToSequence
 import os
 import sys
 import tensorflow as tf

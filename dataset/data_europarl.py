@@ -7,7 +7,7 @@ import string
 from tqdm import tqdm
 from collections import Counter
 from unicodedata import normalize
-from model.data_utils import PAD, UNK, GO, EOS
+from utils import PAD, UNK, GO, EOS
 
 valid_character = re.compile('[^%s]' % re.escape(string.printable))
 # alphanumeric_character = re.compile(r"[^A-Za-z_\d\- ]", re.IGNORECASE)
