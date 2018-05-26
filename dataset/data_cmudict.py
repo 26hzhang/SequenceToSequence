@@ -4,7 +4,7 @@ import ujson
 import os
 from tqdm import tqdm
 from collections import Counter
-from utils import PAD, UNK, GO, EOS
+from utils import UNK, GO, EOS
 
 
 def pickle_dump(data, save_path, suffix=".pkl"):
@@ -25,9 +25,9 @@ def build_cmudict_vocabulary(word_phoneme_pairs):
             char_counter[char] += 1
         for phoneme in pair["phoneme"]:
             phoneme_counter[phoneme] += 1
-    char_vocab = [PAD, GO, EOS, UNK] + [char for char, _ in char_counter.most_common()]
+    char_vocab = [GO, EOS, UNK] + [char for char, _ in char_counter.most_common()]
     char_dict = dict([(char, idx) for idx, char in enumerate(char_vocab)])
-    phoneme_vocab = [PAD, UNK] + [phoneme for phoneme, _ in phoneme_counter.most_common()]
+    phoneme_vocab = [EOS, UNK] + [phoneme for phoneme, _ in phoneme_counter.most_common()]
     phoneme_dict = dict([(v, i) for i, v in enumerate(phoneme_vocab)])
     return char_dict, phoneme_dict
 

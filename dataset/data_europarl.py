@@ -7,7 +7,7 @@ import string
 from tqdm import tqdm
 from collections import Counter
 from unicodedata import normalize
-from utils import PAD, UNK, GO, EOS
+from utils import UNK, GO, EOS
 
 valid_character = re.compile('[^%s]' % re.escape(string.printable))
 # alphanumeric_character = re.compile(r"[^A-Za-z_\d\- ]", re.IGNORECASE)
@@ -46,9 +46,9 @@ def build_vocabulary(data_pairs, en_vocab_size, fr_vocab_size):
             en_counter[word] += 1
         for word in data["fr"]:
             fr_counter[word] += 1
-    en_word_vocab = [PAD, GO, EOS, UNK] + [word for word, _ in en_counter.most_common(en_vocab_size)]
+    en_word_vocab = [GO, EOS, UNK] + [word for word, _ in en_counter.most_common(en_vocab_size)]
     en_word_dict = dict([(word, idx) for idx, word in enumerate(en_word_vocab)])
-    fr_word_vocab = [PAD, GO, EOS, UNK] + [word for word, _ in fr_counter.most_common(fr_vocab_size)]
+    fr_word_vocab = [GO, EOS, UNK] + [word for word, _ in fr_counter.most_common(fr_vocab_size)]
     fr_word_dict = dict([(word, idx) for idx, word in enumerate(fr_word_vocab)])
     return en_word_dict, fr_word_dict
 

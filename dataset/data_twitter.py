@@ -6,7 +6,7 @@ import os
 from tqdm import tqdm
 from collections import Counter
 from nltk import word_tokenize
-from utils import PAD, UNK, GO, EOS
+from utils import UNK, GO, EOS
 
 special_character = re.compile(r"[^A-Za-z_\d,.;!'\- ]", re.IGNORECASE)
 alphanumeric_character = re.compile(r"[^A-Za-z_\d\- ]", re.IGNORECASE)
@@ -41,7 +41,7 @@ def build_vocabulary(utterances, max_vocab_size):
             word_counter[word] += 1
         for word in utterance["ru"]:
             word_counter[word] += 1
-    word_vocab = [PAD, GO, EOS, UNK] + [word for word, _ in word_counter.most_common(max_vocab_size)]
+    word_vocab = [GO, EOS, UNK] + [word for word, _ in word_counter.most_common(max_vocab_size)]
     word_dict = dict([(word, idx) for idx, word in enumerate(word_vocab)])
     return word_vocab, word_dict
 

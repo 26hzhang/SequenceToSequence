@@ -1,5 +1,5 @@
 from dataset.data_cornell import cleanup_sentence, process_cornell
-from utils import batchnize_dataset, process_batch_data, UNK, PAD, GO, EOS
+from utils import batchnize_dataset, process_batch_data, UNK, GO, EOS
 from model import Config, SequenceToSequence
 from nltk import word_tokenize
 import os
@@ -72,7 +72,7 @@ def ids_to_sentence(predict_ids, rev_target_dict, target_dict):
     :return: sentences
     """
     shapes = predict_ids.shape
-    special_tokens = [target_dict[PAD], target_dict[GO], target_dict[EOS]]
+    special_tokens = [target_dict[GO], target_dict[EOS]]
     sentences = []
     for predict in predict_ids:
         sents = []

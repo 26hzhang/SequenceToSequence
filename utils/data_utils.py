@@ -4,10 +4,9 @@ import codecs
 import random
 from tqdm import tqdm
 
-PAD = "<PAD>"
 UNK = "<UNK>"
 GO = "<GO>"
-EOS = "<EOS>"
+EOS = "<EOS>"  # also act as PAD
 
 
 def load_data(filename):
@@ -32,11 +31,11 @@ def process_batch_data(batch_lu, batch_ru, word_dict):
     for lu, ru in zip(batch_lu, batch_ru):
         # reverse encoder input and add PAD at the end
         # lu = list(reversed(lu)) + [word_dict[PAD]] * (max_lu_len - len(lu))  # reverse and PAD encoder input
-        lu = lu + [word_dict[PAD]] * (max_lu_len - len(lu))  # reverse and PAD encoder input
+        lu = lu + [word_dict[EOS]] * (max_lu_len - len(lu))  # reverse and PAD encoder input
         # add GO at the begin and add PAD at the end for decoder input
-        ru_in = [word_dict[GO]] + ru + [word_dict[PAD]] * (max_ru_len - len(ru))  # add GO for decoder input
+        ru_in = [word_dict[GO]] + ru + [word_dict[EOS]] * (max_ru_len - len(ru))  # add GO for decoder input
         # add PAD and EOS at the end for decoder output
-        ru_out = ru + [word_dict[EOS]] + [word_dict[PAD]] * (max_ru_len - len(ru))  # add EOS for decoder output
+        ru_out = ru + [word_dict[EOS]] + [word_dict[EOS]] * (max_ru_len - len(ru))  # add EOS for decoder output
         b_lu.append(lu)
         b_ru_in.append(ru_in)
         b_ru_out.append(ru_out)
