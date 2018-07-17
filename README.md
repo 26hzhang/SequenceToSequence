@@ -52,7 +52,7 @@ List of datasets that the mode of this repository is able to handle.
 - [x] Twitter Chat, borrowed from [[marsan-ma/chat_corpus]](https://github.com/Marsan-Ma/chat_corpus/), with 700k lines tweets, where odd lines are tweets and even lines are responded tweets.
 - [x] [CMU Pronouncing Dictionary](http://svn.code.sf.net/p/cmusphinx/code/trunk/cmudict/cmudict-0.7b).
 - [ ] [IWSLT 2012 MT Track](http://hltc.cs.ust.hk/iwslt/index.php/evaluation-campaign/ted-task.html#MTtrack) dataset, _English-French translation_.
-- [ ] [IWSLT Evaluation 2016 MT Track](https://sites.google.com/site/iwsltevaluation2016/mt-track) dataset, _English-French translation_.
+- [x] [IWSLT Evaluation 2016 MT Track](https://sites.google.com/site/iwsltevaluation2016/mt-track) dataset, _English-French translation_.
 - [x] [Europarl](http://www.statmt.org) dataset, _English-French translation_, reference: [[How to Prepare a French-to-English Dataset for Machine Translation]](https://machinelearningmastery.com/prepare-french-english-dataset-machine-translation/).
 
 ### Implementation List

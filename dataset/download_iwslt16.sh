@@ -6,3 +6,6 @@ tar -zxf en-fr.tgz
 mv en-fr iwslt2016
 mv iwslt2016 raw/
 rm en-fr.tgz
+
+# https://wit3.fbk.eu/archive/2015-01//texts/en/fr/en-fr.tgz
+# https://wit3.fbk.eu/archive/2015-01//texts/fr/en/fr-en.tgz
